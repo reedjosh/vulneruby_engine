@@ -55,6 +55,8 @@ end
 
 4. Run `docker-compose up --abort-on-container-exit`.
 
+   Note, if iterating on containers, don't forget the `--build` flag.
+
 ### To run manually
 
 To run the integration tests locally there are a few steps: 

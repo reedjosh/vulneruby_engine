@@ -1,0 +1,37 @@
+FROM ruby:2.7
+ARG PORT_ARG=3012
+
+RUN apt-get update && apt-get install -y build-essential coreutils
+
+WORKDIR app
+
+COPY agent/* agent/
+COPY Gemfile .
+COPY Gemfile.lock .
+COPY vulneruby_engine.gemspec .
+COPY lib/vulneruby_engine/version.rb ./lib/vulneruby_engine/version.rb
+
+# Used in CI to install gem dropped in ./agent/ directory
+RUN gem install ./agent/contrast-agent.gem
+
+RUN bundle install
+
+ENV CI_TEST=true
+
+COPY . .
+RUN rm **/*.log | true
+
+# this is used by the volume in docker-compose
+RUN mkdir -p /tmp/webrick/messages
+ENV CONTRAST__AGENT__LOGGER__PATH=/tmp/webrick/agent.log
+ENV CONTRAST__AGENT__SERVICE__LOGGER__PATH=/tmp/webrick/service.log
+ENV CONTRAST__API__REQUEST_AUDIT__PATH=/tmp/webrick/messages
+
+RUN ./docker/app_name_generator.sh WEBrick >> /tmp/app_name.txt
+RUN cat /tmp/app_name.txt
+
+RUN bundle exec rails db:migrate
+
+ENV PORT=$PORT_ARG
+
+CMD CONTRAST__APPLICATION__NAME=$(cat /tmp/app_name.txt) bundle exec rails s -p $PORT -c /app/spec/dummy/config.ru
